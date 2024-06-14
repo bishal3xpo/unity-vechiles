@@ -1,30 +1,42 @@
 using System.Collections;
 using System.Collections.Generic;
 using Cinemachine;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PlayerDetector : MonoBehaviour
+public class VechileManager : MonoBehaviour
 {
+    public enum ViewState
+    {
+        TPV,
+        FPV
+    }
     [SerializeField] Button getInButton;
     [SerializeField] Button getOffButton;
     [SerializeField] Transform targetOfVechileForVirtualCamera; //this could be created through code as well.
     [SerializeField] GameObject vechileControls;
-
+    [SerializeField] GameObject firstSit;
+    [SerializeField] Transform fpvView;
+    [SerializeField] Button swithViewButton;
+ 
     CinemachineVirtualCamera virtualCamera;
     GameObject localPlayer;
-    Transform localPlayerEntryPoint;
     CharacterController localPlayerCharacterController;
-    ExamplePlayerController examplePlayerController;
-    HandleAnimation handleAnimation;
-
+    VechileController examplePlayerController;
+    AnimationHandler handleAnimation;
+    bool isPlayerDriving;
+    ViewState currentViewState;
 
     private void Start()
     {
         getInButton?.gameObject.SetActive(false);
         getOffButton?.gameObject.SetActive(false);
+        swithViewButton?.gameObject.SetActive(false);
         virtualCamera = GameObject.FindGameObjectWithTag("PlayerFollowCamera").GetComponent<CinemachineVirtualCamera>();
-        examplePlayerController = gameObject.GetComponentInParent<ExamplePlayerController>();
+        examplePlayerController = gameObject.GetComponentInParent<VechileController>();
+        currentViewState = ViewState.TPV;
+
         DisableSteeringControls();
         AssignButton();
         StartCoroutine(TryGetLocalPlayer());
@@ -44,13 +56,13 @@ public class PlayerDetector : MonoBehaviour
             yield return new WaitForSeconds(5);
         }
         localPlayerCharacterController = localPlayer.GetComponent<CharacterController>();
+        handleAnimation = localPlayer.GetComponentInParent<AnimationHandler>();
     }
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.tag == "Player")
         {
-            localPlayerEntryPoint = other.transform;
             getInButton?.gameObject.SetActive(true);
         }
     }
@@ -69,9 +81,11 @@ public class PlayerDetector : MonoBehaviour
         getOffButton?.gameObject.SetActive(true);
         if (virtualCamera != null)
         {
+            isPlayerDriving = true;
+            swithViewButton?.gameObject.SetActive(true);
             EnableSteeringControls();
-            localPlayer.SetActive(false);
-            Debug.Log("Test101: Virtual Camera is not Null");
+            StartCoroutine(MovePlayerAlongWithVechile());
+            handleAnimation.EnablePlayerDrivingAnimation();
             virtualCamera.Follow = targetOfVechileForVirtualCamera;
         }
        
@@ -82,11 +96,13 @@ public class PlayerDetector : MonoBehaviour
         getOffButton?.gameObject.SetActive(false);
         if (virtualCamera != null)
         {
+            isPlayerDriving = false;
+            swithViewButton?.gameObject.SetActive(false);
             DisableSteeringControls();
-
-            float direction = (localPlayer.transform.position.x > transform.position.x) ? 1f : -1f;
-            Vector3 newPosition = localPlayer.transform.position;
-            newPosition.x += 2f * direction;
+            handleAnimation.EnablePlayerExitDrivingAnimation();
+            
+            Vector3 newPosition = transform.position;
+            newPosition.x += 2f;
             localPlayerCharacterController.enabled = false;
             localPlayer.transform.position = newPosition;
             localPlayerCharacterController.enabled = true;
@@ -94,6 +110,34 @@ public class PlayerDetector : MonoBehaviour
 
             virtualCamera.Follow = localPlayer.transform.Find("PlayerCameraRoot");
         }
+    }
+
+    IEnumerator MovePlayerAlongWithVechile()
+    {
+        localPlayerCharacterController.enabled = false;
+        while (isPlayerDriving)
+        {
+            localPlayer.transform.position = firstSit.transform.position;
+            localPlayer.transform.rotation = firstSit.transform.rotation;
+            yield return null;
+        }
+        localPlayerCharacterController.enabled = true;
+    }
+
+    public void OnSwitchViewButtonClicked()
+    {
+        currentViewState = (currentViewState == ViewState.TPV) ? ViewState.FPV : ViewState.TPV;
+        if (currentViewState == ViewState.TPV)
+        {
+            swithViewButton.GetComponentInChildren<TextMeshProUGUI>().text = nameof(ViewState.FPV);
+            virtualCamera.Follow = targetOfVechileForVirtualCamera;
+        }
+        else
+        {
+            swithViewButton.GetComponentInChildren<TextMeshProUGUI>().text = nameof(ViewState.TPV);
+            virtualCamera.Follow = fpvView;
+        }
+
     }
 
     void EnableSteeringControls()
