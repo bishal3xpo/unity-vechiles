@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-public class VechileController : MonoBehaviour
+public class VehicleController : MonoBehaviour
 {
     public Color materialColor;
     private Rigidbody m_rigidbody;
@@ -29,15 +29,6 @@ public class VechileController : MonoBehaviour
         transform.Translate(new Vector3(0f, 0f, inputVertical) * horizontalSpeed * Time.deltaTime);
     }
 
-    void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Player"))
-        {
-            m_rigidbody.isKinematic = false;
-            m_rigidbody.AddForce(collision.contacts[0].normal * 10f, ForceMode.Impulse);
-            Invoke("SetKinematicTrue", 0.1f);  
-        }
-    }
 
     bool IsGrounded()
     {

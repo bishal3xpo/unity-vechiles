@@ -5,7 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class VechileManager : MonoBehaviour
+public class VehicleManger : MonoBehaviour
 {
     public enum ViewState
     {
@@ -23,7 +23,7 @@ public class VechileManager : MonoBehaviour
     CinemachineVirtualCamera virtualCamera;
     GameObject localPlayer;
     CharacterController localPlayerCharacterController;
-    VechileController examplePlayerController;
+    VehicleController examplePlayerController;
     AnimationHandler handleAnimation;
     bool isPlayerDriving;
     ViewState currentViewState;
@@ -34,7 +34,7 @@ public class VechileManager : MonoBehaviour
         getOffButton?.gameObject.SetActive(false);
         swithViewButton?.gameObject.SetActive(false);
         virtualCamera = GameObject.FindGameObjectWithTag("PlayerFollowCamera").GetComponent<CinemachineVirtualCamera>();
-        examplePlayerController = gameObject.GetComponentInParent<VechileController>();
+        examplePlayerController = gameObject.GetComponentInParent<VehicleController>();
         currentViewState = ViewState.TPV;
 
         DisableSteeringControls();
@@ -46,6 +46,7 @@ public class VechileManager : MonoBehaviour
     {
         getInButton.onClick.AddListener(OnGetInButtonClicked);
         getOffButton.onClick.AddListener(OnGetOffButtonClicked);
+        swithViewButton.onClick.AddListener(OnSwitchViewButtonClicked);
     }
 
     IEnumerator TryGetLocalPlayer()

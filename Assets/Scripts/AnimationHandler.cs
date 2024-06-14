@@ -6,8 +6,9 @@ using UnityEngine;
 public class AnimationHandler : MonoBehaviour
 {
     Animator playerAnimator;
-    bool isDriving;
-    bool exitDriving;
+
+    [SerializeField] string nameOfDrivingState;
+    [SerializeField] string nameOfIdleState;
 
     void Start()
     {
@@ -16,28 +17,14 @@ public class AnimationHandler : MonoBehaviour
 
     public void EnablePlayerDrivingAnimation()
     {
-        //exitDriving = false;
-        //isDriving = true;
-        //HandleDrivingAnimation();
-
-        playerAnimator.Play("DrivingState");
+        playerAnimator.Play(nameOfDrivingState); 
         transform.GetComponent<ThirdPersonController>().enabled = false;
     }
 
     public void EnablePlayerExitDrivingAnimation()
     {
-        //isDriving = false;
-        //exitDriving = true ;
-        //HandleDrivingAnimation();
-        playerAnimator.Play("Idle Walk Run Blend");
+        playerAnimator.Play(nameOfIdleState); 
         transform.GetComponent<ThirdPersonController>().enabled = true;
     }
-
-    void HandleDrivingAnimation()
-    {
-        playerAnimator?.SetBool(nameof(isDriving), isDriving);
-        playerAnimator?.SetBool(nameof(exitDriving), exitDriving);
-    }
-
 
 }
