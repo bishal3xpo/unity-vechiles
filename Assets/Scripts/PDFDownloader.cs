@@ -1,8 +1,11 @@
 using System.Collections;
 using System.IO;
 using UnityEngine;
-using UnityEngine.Android;
 using UnityEngine.Networking;
+
+#if UNITY_ANDROID
+using UnityEngine.Android;
+#endif
 
 public class PDFDownloader : MonoBehaviour
 {
@@ -41,17 +44,10 @@ public class PDFDownloader : MonoBehaviour
                 {
                     File.WriteAllBytes(localFilePath, www.downloadHandler.data);
                     Debug.Log("PDF file downloaded and saved locally at: " + localFilePath);
-#if UNITY_IOS
-                    if (File.Exists(localFilePath))
-                    {
-                        IOSShareSheet.ShowShareSheet(localFilePath); // Call method to show ShareSheet
-#endif
-                    }
-                    else
-                    {
-                        Debug.Log("FileDoes not exist");
-                    }
 
+#if UNITY_IOS
+                    IOSShareFile.ShareFile(localFilePath);
+#endif
                 }
                 catch (System.Exception e)
                 {
@@ -65,8 +61,6 @@ public class PDFDownloader : MonoBehaviour
         }
     }
 
-
-
     private string GetDownloadPath(string fileName)
     {
         string downloadPath = "";
@@ -76,7 +70,7 @@ public class PDFDownloader : MonoBehaviour
         AndroidJavaObject downloadsDirectory = androidEnvironment.CallStatic<AndroidJavaObject>("getExternalStoragePublicDirectory", androidEnvironment.GetStatic<string>("DIRECTORY_DOWNLOADS"));
         downloadPath = downloadsDirectory.Call<string>("getAbsolutePath");
 #elif UNITY_IOS
-        downloadPath = Path.Combine(Application.persistentDataPath, fileName);
+        downloadPath = Path.Combine(Application.persistentDataPath, "Downloads");
         if (!Directory.Exists(downloadPath))
         {
             Directory.CreateDirectory(downloadPath);
@@ -89,6 +83,6 @@ public class PDFDownloader : MonoBehaviour
         }
 #endif
 
-        return downloadPath;
+        return Path.Combine(downloadPath, fileName);
     }
 }
