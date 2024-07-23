@@ -1,14 +1,75 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
+using PDFtoImage;
+using SkiaSharp;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 
 #if UNITY_ANDROID
 using UnityEngine.Android;
 #endif
 
+#region SKBitmap converter
+public static class SkiaSharpExtensions
+{
+    public static Texture2D ToTexture2D(this SKBitmap skBitmap)
+    {
+        Texture2D texture = new Texture2D(skBitmap.Width, skBitmap.Height, TextureFormat.RGBA32, false);
+        byte[] pixels = skBitmap.Bytes;
+        texture.LoadRawTextureData(pixels);
+        texture.Apply();
+        return texture;
+    }
+}
+#endregion
+
 public class PDFDownloader : MonoBehaviour
 {
+    [SerializeField] string pdfFileName;
+    public GameObject rawImagePrefab; // Prefab with RawImage component
+    public RectTransform contentTransform; // Content transform of the Scroll View
+
+    public void RenderImages(IEnumerable<SKBitmap> images)
+    {
+        float totalHeight = 0f;
+        List<float> heights = new List<float>();
+
+        foreach (var image in images)
+        {
+            Texture2D texture = image.ToTexture2D();
+
+            GameObject rawImageObject = Instantiate(rawImagePrefab, contentTransform);
+            RawImage rawImage = rawImageObject.GetComponent<RawImage>();
+            rawImage.texture = texture;
+
+            // Adjust the size of the RawImage to fit the content width
+            float contentWidth = contentTransform.rect.width;
+            float aspectRatio = (float)texture.height / texture.width;
+            float adjustedHeight = contentWidth * aspectRatio;
+
+            //RectTransform rawImageRect = rawImageObject.GetComponent<RectTransform>();
+            //rawImageRect.sizeDelta = new Vector2(contentWidth, adjustedHeight);
+
+            heights.Add(adjustedHeight);
+            totalHeight += adjustedHeight;
+        }
+
+        // Adjust the content height to fit all images
+        contentTransform.sizeDelta = new Vector2(contentTransform.sizeDelta.x, totalHeight);
+
+        // Set the position of each image
+        float currentY = 0f;
+        for (int i = 0; i < contentTransform.childCount; i++)
+        {
+            RectTransform childRect = contentTransform.GetChild(i).GetComponent<RectTransform>();
+            childRect.anchoredPosition = new Vector2(0, -currentY);
+            currentY += heights[i];
+        }
+    }
+
     public void InvokeDownloadPDF()
     {
         Debug.Log("PDF: Invoked InvokeDownloadPDF");
@@ -48,6 +109,9 @@ public class PDFDownloader : MonoBehaviour
 #if UNITY_IOS
                     IOSShareFile.ShareFile(localFilePath);
 #endif
+
+                    // Load and render PDF as images
+                    TryLoadPDFToImage(localFilePath);
                 }
                 catch (System.Exception e)
                 {
@@ -58,6 +122,30 @@ public class PDFDownloader : MonoBehaviour
             {
                 Debug.LogError("Error downloading PDF: " + www.error);
             }
+        }
+    }
+
+    public void TryLoadPDFToImage(string pdfFilePath)
+    {
+        if (File.Exists(pdfFilePath))
+        {
+            // Read the PDF file into a byte array
+            byte[] pdfBytes = File.ReadAllBytes(pdfFilePath);
+
+            // Convert the byte array to a base64 string
+            string base64String = Convert.ToBase64String(pdfBytes);
+
+            Debug.Log("Base64 String: " + base64String);
+
+            // Use PDFtoImage to convert the PDF to images
+            var images = Conversion.ToImages(base64String);
+
+            // Render the images in the scroll view
+            RenderImages(images);
+        }
+        else
+        {
+            Debug.LogError("PDF file not found at path: " + pdfFilePath);
         }
     }
 

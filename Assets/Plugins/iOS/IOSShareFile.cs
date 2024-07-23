@@ -6,7 +6,7 @@ public class IOSShareFile : MonoBehaviour
 {
     // Import the native iOS sharing function
     [DllImport("__Internal")]
-    private static extern void _NativeShare(string filePath);
+    private static extern void _NativeShareFile(string filePath);
 
     // Function to share a file
     public static void ShareFile(string filePath)
@@ -14,7 +14,7 @@ public class IOSShareFile : MonoBehaviour
         #if UNITY_IOS && !UNITY_EDITOR
         if (File.Exists(filePath))
         {
-            _NativeShare(filePath);
+            _NativeShareFile(filePath);
         }
         else
         {
