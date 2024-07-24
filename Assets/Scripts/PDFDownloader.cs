@@ -28,15 +28,18 @@ public static class SkiaSharpExtensions
 
 public class PDFDownloader : MonoBehaviour
 {
-    [SerializeField] string pdfFileName;
-    public GameObject rawImagePrefab; // Prefab with RawImage component
-    public RectTransform contentTransform; // Content transform of the Scroll View
+    [SerializeField] private string pdfFileName;
+    [SerializeField] private GameObject rawImagePrefab; // Prefab with RawImage component
+    [SerializeField] private RectTransform contentTransform; // Content transform of the Scroll View
+    [SerializeField] private string imagesSaveDirectory = "SavedImages"; // Directory to save images
+    [SerializeField] GameObject ScrollView;
 
-    public void RenderImages(IEnumerable<SKBitmap> images)
+    public IEnumerator RenderImages(IEnumerable<SKBitmap> images)
     {
         float totalHeight = 0f;
         List<float> heights = new List<float>();
 
+        int imageIndex = 0;
         foreach (var image in images)
         {
             Texture2D texture = image.ToTexture2D();
@@ -45,22 +48,24 @@ public class PDFDownloader : MonoBehaviour
             RawImage rawImage = rawImageObject.GetComponent<RawImage>();
             rawImage.texture = texture;
 
-            // Adjust the size of the RawImage to fit the content width
             float contentWidth = contentTransform.rect.width;
             float aspectRatio = (float)texture.height / texture.width;
             float adjustedHeight = contentWidth * aspectRatio;
 
-            //RectTransform rawImageRect = rawImageObject.GetComponent<RectTransform>();
-            //rawImageRect.sizeDelta = new Vector2(contentWidth, adjustedHeight);
+            RectTransform rawImageRect = rawImageObject.GetComponent<RectTransform>();
+            rawImageRect.sizeDelta = new Vector2(contentWidth, adjustedHeight);
 
             heights.Add(adjustedHeight);
-            totalHeight += adjustedHeight;
+            totalHeight += adjustedHeight * 2f;
+
+            // Save the image to a file
+            SaveTextureAsPNG(texture, imageIndex);
+            imageIndex++;
+
         }
 
-        // Adjust the content height to fit all images
         contentTransform.sizeDelta = new Vector2(contentTransform.sizeDelta.x, totalHeight);
 
-        // Set the position of each image
         float currentY = 0f;
         for (int i = 0; i < contentTransform.childCount; i++)
         {
@@ -68,6 +73,25 @@ public class PDFDownloader : MonoBehaviour
             childRect.anchoredPosition = new Vector2(0, -currentY);
             currentY += heights[i];
         }
+
+        ScrollView.SetActive(true);
+        yield return null;
+    }
+
+    private void SaveTextureAsPNG(Texture2D texture, int index)
+    {
+        string directoryPath = Path.Combine(Application.persistentDataPath, imagesSaveDirectory);
+
+        if (!Directory.Exists(directoryPath))
+        {
+            Directory.CreateDirectory(directoryPath);
+        }
+
+        string filePath = Path.Combine(directoryPath, $"image_{index}.png");
+        byte[] imageData = texture.EncodeToPNG();
+
+        File.WriteAllBytes(filePath, imageData);
+        Debug.Log($"Image saved at: {filePath}");
     }
 
     public void InvokeDownloadPDF()
@@ -79,12 +103,12 @@ public class PDFDownloader : MonoBehaviour
     public void InvokeDownloadPDFFirebase()
     {
         Debug.Log("PDF: Invoked InvokeDownloadPDFFirebase");
-        StartCoroutine(DownloadPDF("https://firebasestorage.googleapis.com/v0/b/com-threexpo-3xpoverse.appspot.com/o/test-files%2Fdummy1.pdf?alt=media&token=8d9cb6cd-113a-4b50-9c7f-08a6ff58fdef", "downloadedFromFirebase.pdf"));
+        StartCoroutine(DownloadPDF("https://firebasestorage.googleapis.com/v0/b/com-threexpo-3xpoverse.appspot.com/o/test-files%2FAMSBB-2022-23.pdf?alt=media&token=69c56f39-b05a-4377-966a-54713e0a7b7b", "downloadedFromFirebase.pdf"));
     }
 
-    IEnumerator DownloadPDF(string pdfUrl, string fileName)
+    private IEnumerator DownloadPDF(string pdfUrl, string fileName)
     {
-        Debug.Log("PDF: invoked DownloadPDF");
+        Debug.Log("PDF: Invoked DownloadPDF");
 
 #if UNITY_ANDROID
         if (!Permission.HasUserAuthorizedPermission(Permission.ExternalStorageWrite))
@@ -113,7 +137,7 @@ public class PDFDownloader : MonoBehaviour
                     // Load and render PDF as images
                     TryLoadPDFToImage(localFilePath);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
                     Debug.LogError("Error saving PDF: " + e.Message);
                 }
@@ -129,19 +153,15 @@ public class PDFDownloader : MonoBehaviour
     {
         if (File.Exists(pdfFilePath))
         {
-            // Read the PDF file into a byte array
             byte[] pdfBytes = File.ReadAllBytes(pdfFilePath);
-
-            // Convert the byte array to a base64 string
             string base64String = Convert.ToBase64String(pdfBytes);
 
             Debug.Log("Base64 String: " + base64String);
 
-            // Use PDFtoImage to convert the PDF to images
-            var images = Conversion.ToImages(base64String);
+            RenderOptions options = new();
 
-            // Render the images in the scroll view
-            RenderImages(images);
+            var images = Conversion.ToImages(base64String, options: new(Dpi: 300, Rotation: PdfRotation.Rotate0, WithAspectRatio:true));
+            StartCoroutine(RenderImages(images));
         }
         else
         {
