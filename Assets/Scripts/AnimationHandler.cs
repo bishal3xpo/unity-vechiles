@@ -14,7 +14,7 @@ public class AnimationHandler : MonoBehaviour
     {
         playerAnimator = transform.GetComponent<Animator>();
     }
-
+    //test
     public void EnablePlayerDrivingAnimation()
     {
         playerAnimator.Play(nameOfDrivingState); 
